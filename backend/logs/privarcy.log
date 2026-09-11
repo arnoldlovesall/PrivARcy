@@ -1,0 +1,7 @@
+2026-09-03 09:15:06,850 INFO src.dataset.active_learning: Added confirmed review item 1 to training set (FACE)
+2026-09-03 09:15:06,852 INFO src.dataset.active_learning: Added confirmed review item 2 to training set (CREDENTIAL)
+2026-09-03 09:15:12,334 WARNING src.detectors.yolo: YOLO unavailable (No module named 'ultralytics'); object detection skipped for this session
+2026-09-03 09:15:12,334 WARNING src.ocr.service: TrOCR unavailable (No module named 'torch'); text extraction skipped for this session
+2026-09-03 09:15:31,755 WARNING src.detectors.yolo: YOLO unavailable (No module named 'ultralytics'); object detection skipped for this session
+2026-09-03 09:15:31,756 WARNING src.ocr.service: TrOCR unavailable (No module named 'torch'); text extraction skipped for this session
+2026-09-08 22:46:47,577 INFO src.detectors.yolo: YOLO loaded on device=cpu
