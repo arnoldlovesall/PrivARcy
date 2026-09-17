@@ -25,7 +25,7 @@ class YoloDetector:
     Previously this failure was only a console warning, easy to miss
     entirely if the GUI was launched without a visible console.
     """
-    def __init__(self, model_path: str = "yolo26n.pt", confidence: float = .75, device: str = "auto"):
+    def __init__(self, model_path: str = "yolo26n.pt", confidence: float = .50, device: str = "auto"):
         self.model_path, self.confidence, self._model = model_path, confidence, None
         self.device = self._resolve_device(device)
         self.log = get_logger(__name__)

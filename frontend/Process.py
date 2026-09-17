@@ -135,9 +135,18 @@ class ProcessPage(QWidget):
         det_row = QHBoxLayout()
         det_row.setSpacing(24)
         self.det_checkboxes = {}
-        for label in ["Faces", "IDs", "Credentials", "Screens", "License Plates"]:
+        self._class_map = {
+            "Faces": "faces",
+            "IDs": "ids",
+            "Credentials": "credentials",
+            "Documents": "documents",
+            "Screens": "screens",
+            "License Plates": "license plates",
+        }
+        for label in self._class_map:
             cb = QCheckBox(f"  {label}")
-            cb.setChecked(True)
+            enabled = self._backend.config.enabled_classes if self._backend else None
+            cb.setChecked(True if enabled is None else self._class_map[label] in enabled)
             cb.setCursor(Qt.PointingHandCursor)
             det_row.addWidget(cb)
             self.det_checkboxes[label] = cb
@@ -157,7 +166,8 @@ class ProcessPage(QWidget):
 
         self.conf_slider = WheelSafeSlider(Qt.Horizontal)
         self.conf_slider.setRange(0, 100)
-        self.conf_slider.setValue(75)
+        self.conf_slider.setValue(round(self._backend.config.confidence_threshold * 100))
+        self.conf_value_lbl.setText(f"{self._backend.config.confidence_threshold:.2f}")
         self.conf_slider.valueChanged.connect(self._on_conf_change)
         settings_layout.addWidget(self.conf_slider)
 
@@ -170,6 +180,7 @@ class ProcessPage(QWidget):
         redact_row.setSpacing(16)
         self.redact_group = QButtonGroup(self)
         self._redaction_methods = ["Blur", "Pixelate", "Solid Mask"]
+        self._redaction_to_config = {"Blur": "blur", "Pixelate": "pixelate", "Solid Mask": "solid mask"}
         self._redaction_method = self._redaction_methods[0]
         for i, name in enumerate(self._redaction_methods):
             rb = QRadioButton(name)
@@ -422,9 +433,15 @@ class ProcessPage(QWidget):
         # otherwise every other setting configured on the Settings page
         # (low threshold, model paths, enabled classes, performance
         # profile, ...) would silently reset to defaults on every run.
+        enabled = [
+            self._class_map[label]
+            for label, cb in self.det_checkboxes.items()
+            if cb.isChecked()
+        ]
         self._backend.config.update(
             confidence_threshold=self.conf_slider.value() / 100,
-            redaction_method=self._redaction_method,
+            redaction_method=self._redaction_to_config.get(self._redaction_method, "blur"),
+            enabled_classes=enabled or set(self._class_map.values()),
         )
 
         self._worker = QtProcessingWorker(
@@ -439,7 +456,19 @@ class ProcessPage(QWidget):
         self._worker.failed.connect(self._on_worker_failed)
         self._worker.cancelled.connect(lambda: self.banner.show_message("Processing cancelled.", "info"))
         self.set_processing_state("processing")
-        self._worker.start()
+        self._worker.start(            )
+
+    def set_video(self, path):
+        """Pre-fill the file picker from Home's Browse Files selection."""
+        if not path:
+            return
+        self._selected_file = path
+        self.file_info_lbl.setText(os.path.basename(path))
+        try:
+            size = os.path.getsize(path) / (1024 * 1024)
+        except OSError:
+            size = 0
+        self.file_meta_lbl.setText(f"Path: {path}\nSize: {size:.1f} MB")
 
     def _on_cancel_clicked(self):
         """Return to the idle state."""

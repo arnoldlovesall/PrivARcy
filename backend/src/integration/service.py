@@ -51,6 +51,9 @@ class BackendService:
         self.correction_log = CorrectionLogStore(self.config.correction_log_path)
 
         self._jobs: dict[str, ProcessingWorker] = {}
+        self.session_source_path: str | None = None
+        self.session_output_path: str | None = None
+        self.session_detections: list[dict] = []
 
     # -- Settings (was: Settings.py) -----------------------------------
     def get_settings(self) -> dict:
@@ -84,6 +87,7 @@ class BackendService:
                 "avg_fps": None,
             },
         )
+        self.remember_session(result.source_path, result.output_path, result.detections)
         self.history_store.record(
             source_name=job_id, frames=result.frames,
             total_detections=len(result.detections), redactions=result.redactions,
@@ -136,6 +140,9 @@ class BackendService:
             if item.status == "confirmed":
                 self.active_learning.record_confirmed(item)
             self.correction_log.log_decision(item.id, item.category, item.classification, item.status)
+            for event in self.session_detections:
+                if event.get("id") == item.id:
+                    event["status"] = item.status
         return item
 
     def refine_classifier(self, min_samples: int = 5) -> dict:
@@ -171,9 +178,36 @@ class BackendService:
     def results(self):
         return self.results_store
 
+    def remember_session(self, source_path: str | None, output_path: str | None,
+                         detections: list[dict] | None = None) -> None:
+        self.session_source_path = source_path
+        self.session_output_path = output_path
+        self.session_detections = list(detections or [])
+
+    def finalize_session_output(self) -> str | None:
+        """Rebuild the shareable MP4 after review so Confirm is burned in."""
+        from ..pipeline import reconstruct_redacted_video
+
+        if not self.session_source_path or not self.session_output_path:
+            return self.session_output_path
+        confirmed = any(
+            ev.get("action") == "review" and ev.get("status") == "confirmed"
+            for ev in self.session_detections
+        )
+        if not confirmed:
+            return self.session_output_path
+        reconstruct_redacted_video(
+            self.session_source_path, self.session_output_path,
+            self.session_detections, self.config,
+        )
+        return self.session_output_path
+
     def reset_session(self) -> None:
         self.review_store.clear()
         self.results_store.reset()
+        self.session_source_path = None
+        self.session_output_path = None
+        self.session_detections = []
 
     # -- Faces (was: FaceRegister.py) ------------------------------------
     def register_face(self, code: str, name: str, image_path: str) -> dict:
@@ -199,9 +233,13 @@ class BackendService:
         self.live_session = LiveSession(self.config, self.review_store)
         return self.live_session.start(camera_index, width, height, fps)
 
-    def stop_live(self) -> None:
+    def stop_live(self) -> dict:
+        info: dict = {}
         if self.live_session:
-            self.live_session.stop()
+            info = self.live_session.stop() or {}
+            if info.get("output_path"):
+                self.session_output_path = info["output_path"]
+        return info
 
     def restart_live_if_active(self) -> bool:
         """Re-create the live session with the same camera/resolution so
@@ -252,7 +290,7 @@ class BackendService:
         from ..detectors import YoloDetector
         from ..ocr import OCRService
 
-        detector = YoloDetector(self.config.model_path, self.config.confidence_threshold, self.config.device)
+        detector = YoloDetector(self.config.model_path, self.config.low_threshold, self.config.device)
         detector_ok = detector._load()
 
         ocr = OCRService(self.config.ocr_model_path)

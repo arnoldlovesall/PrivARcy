@@ -277,6 +277,13 @@ class FaceScanDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Scan Face — Live Enrollment")
         self.setMinimumSize(560, 620)
+        # QDialog defaults to the OS-native window color, which stays
+        # light gray in Dark Mode and swallows the theme's light text
+        # color on any child label that doesn't paint its own background
+        # (e.g. status_lbl). Pin the dialog to the theme's panel color
+        # so it follows the palette on both themes.
+        self.setStyleSheet(f"QDialog {{ background-color: {styles.PANEL_COLOR}; }}")
+
         self._backend = backend
         self._cameras = cameras
         self._cap = None
@@ -302,25 +309,46 @@ class FaceScanDialog(QDialog):
 
         self.preview_lbl = QLabel("Starting camera…")
         self.preview_lbl.setAlignment(Qt.AlignCenter)
+        # Preview stays black on both themes on purpose — video reads
+        # better against a black frame than against a panel color.
         self.preview_lbl.setStyleSheet("background-color: #000; border-radius: 10px; color: white;")
         self.preview_lbl.setMinimumHeight(400)
         layout.addWidget(self.preview_lbl)
 
         self.status_lbl = QLabel("Position your face in frame.")
         self.status_lbl.setAlignment(Qt.AlignCenter)
-        self.status_lbl.setStyleSheet("font-size: 14px; font-weight: 600;")
+        # styles.themed() so the color regenerates on theme switch. No
+        # background rule — it inherits the dialog's themed panel color.
+        styles.themed(
+            self.status_lbl,
+            lambda: f"font-size: 14px; font-weight: 600; color: {styles.TEXT_COLOR};"
+        )
         layout.addWidget(self.status_lbl)
 
         btn_row = QHBoxLayout()
+        # Both Retry and Cancel were previously left unstyled (no objectName),
+        # so Qt fell back to the native OS button style — which paints a
+        # light gray background in Dark Mode that swallows the theme's
+        # light text color and made the labels nearly illegible. Tagging
+        # them as SecondaryButton routes them through the existing
+        # QPushButton#SecondaryButton QSS rules instead.
         self.retry_btn = QPushButton("Retry")
+        self.retry_btn.setObjectName("SecondaryButton")
+        self.retry_btn.setMinimumWidth(100)
         self.retry_btn.clicked.connect(self._restart_scan)
         self.retry_btn.setEnabled(False)
+
         cancel_btn = QPushButton("Cancel")
+        cancel_btn.setObjectName("SecondaryButton")
+        cancel_btn.setMinimumWidth(100)
         cancel_btn.clicked.connect(self.reject)
+
         self.confirm_btn = QPushButton("Use This Photo")
         self.confirm_btn.setObjectName("PrimaryButton")
+        self.confirm_btn.setMinimumWidth(140)
         self.confirm_btn.setEnabled(False)
         self.confirm_btn.clicked.connect(self._confirm)
+
         btn_row.addWidget(self.retry_btn)
         btn_row.addWidget(cancel_btn)
         btn_row.addStretch()
@@ -479,6 +507,20 @@ class FaceScanDialog(QDialog):
         self.result_name = name
         self.accept()
 
+    def retheme(self):
+        """Re-apply themed inline styles after a theme switch.
+
+        Only relevant if a theme toggle is somehow triggered while this
+        modal dialog is open — the dialog is modal, so in normal use the
+        theme is always switched from the main window with this dialog
+        closed. Still provided so the class behaves consistently with
+        every other widget in the app.
+        """
+        # Re-pin the dialog background against the newly-active palette.
+        self.setStyleSheet(f"QDialog {{ background-color: {styles.PANEL_COLOR}; }}")
+        # Re-run every widget's themed() lambda that was registered.
+        retheme_widget_tree(self)
+
     def closeEvent(self, event):
         self.timer.stop()
         if self._cap is not None:
@@ -583,6 +625,12 @@ class FaceRegisterPage(QWidget):
             description="All detected faces in the video will be redacted. Register participants to keep them visible.",
             icon_name="face"
         )
+        # EmptyState left-aligns its text by default (designed for in-card
+        # usage elsewhere, e.g. the audit log in Live.py). On this
+        # full-width page, center the title and description so the
+        # placeholder reads as a balanced block instead of text hugging
+        # the left edge of the page.
+        self._center_empty_state(self.empty_state)
         self.empty_state.hide()
         main_layout.addWidget(self.empty_state)
 
@@ -592,6 +640,20 @@ class FaceRegisterPage(QWidget):
         root_layout.addWidget(self.scroll)
 
         self.refresh_grid()
+
+    @staticmethod
+    def _center_empty_state(empty_state):
+        """Recursively center every QLabel inside an EmptyState widget.
+
+        EmptyState composes its title and description as QLabels nested
+        in internal layouts with no public alignment API, so this walks
+        the widget tree and sets Qt.AlignCenter on each one. Kept local
+        to this page instead of changing EmptyState itself — other
+        usages (e.g. the audit log card in Live.py) intentionally want
+        left-aligned text within their in-card container.
+        """
+        for lbl in empty_state.findChildren(QLabel):
+            lbl.setAlignment(Qt.AlignCenter)
 
     def scan_face(self):
         """Live-camera enrollment via FaceScanDialog — same underlying

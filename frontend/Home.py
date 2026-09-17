@@ -101,9 +101,11 @@ class ConfigOptionCard(QFrame):
 
 
 class HomePage(QWidget):
-    def __init__(self, navigate_callback):
+    def __init__(self, navigate_callback, backend=None):
         super().__init__()
         self.navigate = navigate_callback
+        self._backend = backend
+        self._pending_files = []
 
         # Main wrapper layout that holds the scroll area
         root_layout = QVBoxLayout(self)
@@ -208,7 +210,7 @@ class HomePage(QWidget):
         continue_btn = QPushButton("Continue to Processing")
         continue_btn.setObjectName("PrimaryButton")
         continue_btn.setFixedHeight(48)
-        continue_btn.clicked.connect(lambda: self.navigate("Process"))
+        continue_btn.clicked.connect(self.continue_to_processing)
         layout.addWidget(continue_btn)
 
         # Before You Start
@@ -286,6 +288,17 @@ class HomePage(QWidget):
         for card in self.source_cards:
             card.set_selected(card is chosen_card)
 
+    def continue_to_processing(self):
+        """Apply the selected mode, then open Process (files) or Live (camera)."""
+        if self._backend is not None:
+            mode = "realtime" if self.opt_lite_card.property("selected") else "offline"
+            self._backend.config.apply_processing_mode(mode)
+            self._backend.config.save()
+        if self.webcam_card.property("selected") or self.mobile_card.property("selected"):
+            self.navigate("Live")
+            return
+        self.navigate("Process")
+
     def select_config_card(self, chosen_card):
         for card in self.config_options:
             card.set_selected(card is chosen_card)
@@ -293,6 +306,7 @@ class HomePage(QWidget):
     def browse_files(self):
         files, _ = QFileDialog.getOpenFileNames(self, "Select Video Files", "", "Video Files (*.mp4 *.avi *.mov)")
         if files:
+            self._pending_files = files
             self.file_label.setText(f"{len(files)} file(s) selected")
 
     def retheme(self):

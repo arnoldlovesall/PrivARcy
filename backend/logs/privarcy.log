@@ -5,3 +5,11 @@
 2026-09-03 09:15:31,755 WARNING src.detectors.yolo: YOLO unavailable (No module named 'ultralytics'); object detection skipped for this session
 2026-09-03 09:15:31,756 WARNING src.ocr.service: TrOCR unavailable (No module named 'torch'); text extraction skipped for this session
 2026-09-08 22:46:47,577 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-17 20:48:33,469 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-17 20:49:00,745 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-17 20:49:05,640 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-17 20:49:07,512 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-17 20:49:12,662 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-18 02:27:10,370 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-18 02:59:03,391 INFO src.detectors.yolo: YOLO loaded on device=cpu
+2026-09-18 03:19:05,137 INFO src.detectors.yolo: YOLO loaded on device=cpu

@@ -61,6 +61,17 @@ def _results_bucket(label: str) -> str:
 
 class WelcomePage(QWidget):
     """Initial Welcome & Landing page displayed when main.py is launched."""
+
+    # Feature-card sizing constants — kept here so the card width, internal
+    # padding, and the text-wrap calculation in _create_feature_card() all
+    # stay in sync from a single source of truth. Change CARD_WIDTH to
+    # resize every card; the description's word-wrap width is derived
+    # automatically from it (CARD_WIDTH minus horizontal padding).
+    CARD_WIDTH = 260
+    CARD_MAX_WIDTH = 320
+    CARD_PADDING_H = 18
+    CARD_PADDING_V = 16
+
     def __init__(self, on_get_started, on_toggle_theme):
         super().__init__()
         self.on_get_started = on_get_started
@@ -95,7 +106,7 @@ class WelcomePage(QWidget):
         # Capped width so the card stays well-proportioned instead of
         # stretching edge-to-edge once the window auto-maximizes on
         # Get Started (see MainWindow.start_app).
-        hero_card.setMaximumWidth(920)
+        hero_card.setMaximumWidth(1040)
         hero_layout = QVBoxLayout(hero_card)
         hero_layout.setContentsMargins(40, 36, 40, 36)
         hero_layout.setSpacing(16)
@@ -135,11 +146,12 @@ class WelcomePage(QWidget):
         desc_lbl.setObjectName("WelcomeDesc")
         desc_lbl.setWordWrap(True)
         desc_lbl.setAlignment(Qt.AlignCenter)
-        desc_lbl.setMaximumWidth(720)
+        desc_lbl.setMaximumWidth(750)
         hero_layout.addWidget(desc_lbl)
 
         features_layout = QHBoxLayout()
         features_layout.setSpacing(16)
+        features_layout.setAlignment(Qt.AlignCenter)
 
         feat1 = self._create_feature_card(
             "shield", "Intelligent Redaction",
@@ -208,9 +220,18 @@ class WelcomePage(QWidget):
     def _create_feature_card(self, icon_name, title, desc):
         card = QFrame()
         card.setObjectName("FeaturePillCard")
-        card.setMinimumWidth(220)  # matches the width assumed by the wrap-height calc below
+        # Width is driven by the class-level CARD_WIDTH constant so the card
+        # and the description's word-wrap width (derived below) can never
+        # drift out of sync. Max-width caps how far a card stretches when
+        # the window is very wide, keeping the three cards visually grouped.
+        card.setMinimumWidth(self.CARD_WIDTH)
+        card.setMaximumWidth(self.CARD_MAX_WIDTH)
+
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(18, 16, 18, 16)
+        layout.setContentsMargins(
+            self.CARD_PADDING_H, self.CARD_PADDING_V,
+            self.CARD_PADDING_H, self.CARD_PADDING_V,
+        )
         layout.setSpacing(8)
 
         icon_lbl = QLabel()
@@ -235,9 +256,14 @@ class WelcomePage(QWidget):
         # in the Welcome tagline label). Computing the wrapped height
         # explicitly via QFontMetrics — instead of trusting Qt's
         # automatic sizeHint here — sidesteps that negotiation entirely.
+        #
+        # Wrap width is derived from CARD_WIDTH minus horizontal padding so
+        # it always matches the actual available text area inside the card;
+        # no more two-numbers-must-agree fragility.
+        wrap_width = self.CARD_WIDTH - (self.CARD_PADDING_H * 2)
         metrics = desc_lbl.fontMetrics()
         wrapped_rect = metrics.boundingRect(
-            0, 0, 230, 1000, Qt.TextWordWrap, desc
+            0, 0, wrap_width, 1000, Qt.TextWordWrap, desc
         )
         desc_lbl.setMinimumHeight(int(wrapped_rect.height() * 1.4) + 4)
         layout.addWidget(desc_lbl)

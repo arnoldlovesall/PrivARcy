@@ -25,6 +25,7 @@ def get_results(job_id: str, service: BackendService = Depends(get_service)):
 
 @router.get("/{job_id}/export")
 def export_video(job_id: str, service: BackendService = Depends(get_service)):
+    service.finalize_session_output()
     result = service.results().get(job_id)
     if result is None or not result.output_path:
         raise HTTPException(404, "No redacted output available for this job_id")

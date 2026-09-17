@@ -70,11 +70,12 @@ class AppConfig:
     ocr_cache_passes: int = 20
 
     # -- Confidence-gated decision thresholds (T_high / T_low) --
-    confidence_threshold: float = .75      # T_high: >= this -> auto-redact
-    low_threshold: float = .40             # T_low: below this -> ignore as noise
+    # Thesis Table II: >= 0.80 auto-redact, 0.50–0.79 review, < 0.50 discard.
+    confidence_threshold: float = .80      # T_high: >= this -> auto-redact
+    low_threshold: float = .50             # T_low: below this -> ignore as noise
     iou_threshold: float = .50
     temporal_smoothing: int = 5
-    track_termination: int = 15
+    track_termination: int = 5
 
     # -- Redaction --
     redaction_method: str = "blur"          # blur | pixelate | solid mask
@@ -122,6 +123,16 @@ class AppConfig:
             self.performance_profile = profile
             self.detection_interval = preset["detection_interval"]
             self.jpeg_quality = preset["jpeg_quality"]
+
+    def apply_processing_mode(self, mode: str) -> None:
+        """High-Accuracy Offline vs Lightweight Real-Time (thesis Table I)."""
+        if mode == "realtime":
+            self.apply_performance_profile("low")
+            self.detection_scale = 0.5
+        else:
+            self.apply_performance_profile("high")
+            self.detection_interval = 1
+            self.detection_scale = 1.0
 
     def to_dict(self) -> dict:
         data = asdict(self)

@@ -25,11 +25,11 @@
     "license plates",
     "screens"
   ],
-  "output_dir": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\output",
-  "registry_dir": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\face_registry",
-  "uploads_dir": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\uploads",
-  "review_frames_dir": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\review_frames",
-  "dataset_dir": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\dataset",
-  "correction_log_path": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\correction_log.db",
-  "classifier_weights_path": "D:\\PrivARcy 2am arnold.malonjr\\backend\\data\\classifier_weights.json"
+  "output_dir": "D:\\PrivARcy\\backend\\data\\output",
+  "registry_dir": "D:\\PrivARcy\\backend\\data\\face_registry",
+  "uploads_dir": "D:\\PrivARcy\\backend\\data\\uploads",
+  "review_frames_dir": "D:\\PrivARcy\\backend\\data\\review_frames",
+  "dataset_dir": "D:\\PrivARcy\\backend\\data\\dataset",
+  "correction_log_path": "D:\\PrivARcy\\backend\\data\\correction_log.db",
+  "classifier_weights_path": "D:\\PrivARcy\\backend\\data\\classifier_weights.json"
 }

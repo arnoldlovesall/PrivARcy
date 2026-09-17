@@ -30,7 +30,11 @@ def start_live(payload: LiveStartRequest, service: BackendService = Depends(get_
 @router.post("/stop")
 def stop_live(service: BackendService = Depends(get_service)):
     service.stop_live()
-    return {"live": False}
+    session = service.live_session
+    return {
+        "live": False,
+        "output_path": getattr(session, "output_path", None) if session else None,
+    }
 
 
 @router.get("/frame")

@@ -98,6 +98,16 @@ def set_theme(name):
 
 def build_qss():
     """Build the global stylesheet from the *current* live palette."""
+    # SVG data URLs require '#' to be URL-encoded as '%23', otherwise Qt's
+    # URL parser treats everything after it as a fragment identifier and
+    # silently fails to load the image (renders as a broken-image square
+    # or nothing at all). Pre-encode every color the combo arrow needs —
+    # normal, muted (disabled), and accent (hover) — so the SVG chevron
+    # tracks the theme automatically.
+    text_svg = TEXT_COLOR.replace("#", "%23")
+    muted_svg = MUTED_TEXT_COLOR.replace("#", "%23")
+    accent_svg = ACCENT_TEAL.replace("#", "%23")
+
     return f"""
 * {{
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
@@ -408,7 +418,8 @@ QPushButton#ThemeToggle:hover {{
     color: {ACCENT_TEAL};
 }}
 
-QLineEdit, QComboBox {{
+/* ── Inputs: QLineEdit + QComboBox ───────────────────────────────── */
+QLineEdit {{
     background-color: {PANEL_COLOR};
     border: 1px solid {BORDER_COLOR};
     border-radius: 8px;
@@ -417,8 +428,113 @@ QLineEdit, QComboBox {{
     font-size: 13px;
 }}
 
-QLineEdit:focus, QComboBox:focus {{
+QLineEdit:focus {{
     border: 1px solid {ACCENT_TEAL};
+}}
+
+QComboBox {{
+    background-color: {PANEL_COLOR};
+    border: 1px solid {BORDER_COLOR};
+    border-radius: 8px;
+    padding: 6px 10px;
+    color: {TEXT_COLOR};
+    font-size: 13px;
+    min-height: 22px;
+}}
+
+QComboBox:hover {{
+    border: 1px solid {ACCENT_TEAL};
+}}
+
+QComboBox:focus {{
+    border: 1px solid {ACCENT_TEAL};
+}}
+
+QComboBox:disabled {{
+    background-color: {BG_COLOR};
+    color: {MUTED_TEXT_COLOR};
+    border: 1px solid {BORDER_COLOR};
+}}
+
+/* ── QComboBox: drop-down region + arrow ─────────────────────────── */
+
+/* The clickable arrow region on the right. A subtle vertical divider
+   separates it from the text area; hovering the *whole combo* tints
+   the region to signal "this opens a dropdown". */
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 28px;
+    border-left: 1px solid {BORDER_COLOR};
+    background: transparent;
+    border-top-right-radius: 7px;
+    border-bottom-right-radius: 7px;
+}}
+
+QComboBox:hover::drop-down {{
+    background-color: {NAV_HOVER_COLOR};
+}}
+
+QComboBox:on::drop-down {{
+    /* While the popup is open — a slightly stronger tint so the user
+       can see which combo is currently expanded at a glance. */
+    background-color: {NAV_HOVER_COLOR};
+    border-left: 1px solid {ACCENT_TEAL};
+}}
+
+/* Arrow glyph as an inline SVG data URL. Drawn as a soft rounded
+   chevron (not a sharp triangle) — it reads better at small sizes and
+   matches the icon weight used elsewhere in the app (see create_icon
+   in components.py, which uses 1.75–2px strokes for the nav icons).
+
+   Color is baked into the SVG per theme, URL-encoded as %23 for '#'
+   (otherwise Qt's URL parser eats the hex as a fragment marker). */
+QComboBox::down-arrow {{
+    image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1.5 2 L6 6.5 L10.5 2' stroke='{text_svg}' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    width: 12px;
+    height: 8px;
+    margin-right: 8px;
+}}
+
+QComboBox:hover::down-arrow {{
+    /* On hover, the chevron picks up the accent color to match the
+       combo's border-color change above it. */
+    image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1.5 2 L6 6.5 L10.5 2' stroke='{accent_svg}' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}}
+
+QComboBox::down-arrow:disabled {{
+    image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'><path d='M1.5 2 L6 6.5 L10.5 2' stroke='{muted_svg}' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+}}
+
+/* The popup list is a top-level widget, NOT a child of the QComboBox —
+   it must be styled via `QComboBox QAbstractItemView`, otherwise it
+   renders as an OS-native white box regardless of the surrounding
+   theme (this is the classic "dark mode combo still looks light" bug). */
+QComboBox QAbstractItemView {{
+    background-color: {PANEL_COLOR};
+    color: {TEXT_COLOR};
+    border: 1px solid {BORDER_COLOR};
+    border-radius: 6px;
+    padding: 4px;
+    outline: 0;                       /* kill the dotted focus rect */
+    selection-background-color: {ACCENT_TEAL};
+    selection-color: #FFFFFF;
+}}
+
+QComboBox QAbstractItemView::item {{
+    min-height: 24px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}}
+
+QComboBox QAbstractItemView::item:hover {{
+    background-color: {NAV_HOVER_COLOR};
+    color: {TEXT_COLOR};
+}}
+
+QComboBox QAbstractItemView::item:selected {{
+    background-color: {ACCENT_TEAL};
+    color: #FFFFFF;
 }}
 
 QSlider::groove:horizontal {{
@@ -677,7 +793,7 @@ QScrollBar::handle:vertical {{
     border-radius: 4px;
 }}
 QScrollArea:hover QScrollBar::handle:vertical,
-QScrollBar:vertical:hover QScrollBar::handle:vertical {{
+QScrollBar::vertical:hover QScrollBar::handle:vertical {{
     background: {BORDER_COLOR};
 }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{

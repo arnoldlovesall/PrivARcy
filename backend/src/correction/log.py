@@ -41,7 +41,10 @@ class CorrectionLogStore:
         """Record one reviewer decision. Silently ignores anything other
         than a final confirmed/rejected decision (e.g. 'pending') — only
         a completed human judgment is useful correction signal."""
-        if decision not in ("confirmed", "rejected") or not pattern:
+        if decision not in ("confirmed", "rejected"):
+            return
+        pattern = pattern or category
+        if not pattern:
             return
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(

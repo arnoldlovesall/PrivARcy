@@ -21,7 +21,7 @@ class PrivacyDecisionEngine:
     participant should never be redacted.
     """
 
-    def __init__(self, high: float = .75, low: float = .40):
+    def __init__(self, high: float = .80, low: float = .50):
         self.high, self.low = high, low
 
     def decide(self, confidence: float, known_consent: bool = False,

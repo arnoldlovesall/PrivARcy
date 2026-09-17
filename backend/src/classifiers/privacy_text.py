@@ -50,6 +50,8 @@ class PrivacyTextClassifier:
         "license_plate": r"\b[A-Z]{2,3}[- ]?\d{3,4}\b",
         "date_of_birth": r"\bDOB[:\s]",
         "confidential_marking": r"\b(CONFIDENTIAL|INTERNAL USE ONLY|RESTRICTED|PROPRIETARY)\b",
+        "address": r"\b\d{1,5}\s+[A-Za-z0-9.\s]{2,40}\s(?:street|st\.?|avenue|ave\.?|road|rd\.?|boulevard|blvd\.?|lane|ln\.?|drive|dr\.?)\b",
+        "person_name": r"\b(?:name[:\s]+|mr\.?|mrs\.?|ms\.?|miss)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b",
         "phone": r"\b(?:\+?\d[\d ()-]{7,}\d)\b",
     }
 
@@ -63,6 +65,8 @@ class PrivacyTextClassifier:
         "license_plate": "LICENSE_PLATE",
         "date_of_birth": "ID",
         "confidential_marking": "DOCUMENT",
+        "address": "DOCUMENT",
+        "person_name": "DOCUMENT",
     }
 
     def __init__(self, weights_path: str | Path | None = None):

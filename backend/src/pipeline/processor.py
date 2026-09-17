@@ -39,6 +39,7 @@ class ProcessingResult:
     detections: list[dict] = field(default_factory=list)
     redactions: int = 0
     cancelled: bool = False
+    source_path: str = ""
 
 
 class ProcessingPipeline:
@@ -53,7 +54,9 @@ class ProcessingPipeline:
     def __init__(self, config: AppConfig | None = None, review_store: ReviewStore | None = None):
         self.config = config or AppConfig()
         self.config.ensure_directories()
-        self.detector = YoloDetector(self.config.model_path, self.config.confidence_threshold, self.config.device)
+        # Filter at T_low so [T_low, T_high) can reach the review queue.
+        # T_high is applied later by PrivacyDecisionEngine, not by YOLO.
+        self.detector = YoloDetector(self.config.model_path, self.config.low_threshold, self.config.device)
         self.ocr = OCRService(self.config.ocr_model_path, device=None if self.config.device == "auto" else self.config.device)
         self.classifier = PrivacyTextClassifier(self.config.classifier_weights_path)
         self.registry = FaceRegistry(self.config.registry_dir)
@@ -90,6 +93,8 @@ class ProcessingPipeline:
         events: list[dict] = []
         redactions = 0
         index = 0
+        last_regions: list[tuple[int, int, int, int]] = []
+        interval = max(1, self.config.detection_interval)
         start = perf_counter()
         try:
             for index, frame in enumerate(reader, 1):
@@ -97,6 +102,16 @@ class ProcessingPipeline:
                     break
                 if writer is None:
                     writer = VideoWriter(output, reader.fps, (frame.shape[1], frame.shape[0]))
+
+                skip_detect = interval > 1 and (index - 1) % interval != 0
+                if skip_detect:
+                    frame = self.redactor.apply(frame, last_regions)
+                    writer.write(frame)
+                    if frame_callback:
+                        frame_callback(frame)
+                    if progress:
+                        progress(index, reader.total_frames, len(events), redactions)
+                    continue
 
                 detected = self.tracker.update(self.detector.detect(frame, scale=self.config.detection_scale))
                 detected = [d for d in detected if self._class_enabled(d.label)]
@@ -147,6 +162,7 @@ class ProcessingPipeline:
                     # actually reach review (not every detection), to
                     # avoid flooding disk with images no one will use.
                     saved_image_path = None
+                    review_item = None
                     if action == "review":
                         saved_image_path = str(
                             self.config.review_frames_dir / f"{Path(video_path).stem}_f{index}.jpg"
@@ -161,6 +177,7 @@ class ProcessingPipeline:
                         "confidence": d.confidence,
                         "bbox": d.bbox,
                         "frame": index,
+                        "track_id": getattr(d, "track_id", None),
                         # MM:SS.ff — matches Review.py's TimelineWidget parser
                         # (`_time_to_seconds`), which reads exactly two parts.
                         "time": f"{int(index / reader.fps) // 60:02d}:{(index / reader.fps) % 60:05.2f}",
@@ -171,28 +188,26 @@ class ProcessingPipeline:
                         "classification": classification_label,
                         "classification_confidence": classification_conf,
                     }
-                    events.append(event)
 
                     if action == "redact":
-                        # Smoothed, not the raw per-frame box — this is
-                        # what "temporal smoothing... to prevent flickering"
-                        # actually means: the redaction region is a moving
-                        # average across this track's recent frames, while
-                        # the decision itself still used the raw box above.
                         regions.append(self.smoother.smooth(getattr(d, "track_id", None), d.bbox))
                         redactions += 1
                     elif action == "review" and self.review_store is not None:
-                        self.review_store.add(
+                        review_item = self.review_store.add(
                             label=d.label.title(), category=category, source=source_name,
                             frame=index,
-                            time=f"{int(index / reader.fps) // 60:02d}:{(index / reader.fps) % 60:05.2f}",
+                            time=event["time"],
                             confidence=d.confidence,
                             bbox=d.bbox, image_path=saved_image_path, ocr_text=ocr_text,
                             classification=classification_label,
                             classification_confidence=classification_conf,
                         )
+                        event["id"] = review_item.id
+
+                    events.append(event)
 
                 self.smoother.forget_stale({getattr(d, "track_id", None) for d in detected})
+                last_regions = regions
                 frame = self.redactor.apply(frame, regions)
                 writer.write(frame)
                 if frame_callback:
@@ -201,7 +216,9 @@ class ProcessingPipeline:
                     progress(index, reader.total_frames, len(events), redactions)
 
             self.log.info("Processing finished in %.1fs", perf_counter() - start)
-            return ProcessingResult(str(output), index, events, redactions, self.cancelled)
+            return ProcessingResult(
+                str(output), index, events, redactions, self.cancelled, source_path=str(video_path),
+            )
         finally:
             reader.close()
             if writer:
