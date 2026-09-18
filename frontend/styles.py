@@ -10,7 +10,19 @@ LIGHT_COLORS = {
     "ACCENT_ORANGE": "#E5A94E",
     "ACCENT_RED": "#E5604E",
     "SHADOW_COLOR": "rgba(0, 0, 0, 0.06)",
-    "NAV_HOVER_COLOR": "#F0F4F4",
+
+    # --- Nav ---
+    "NAV_BG_COLOR": "#FFFFFF",
+    "NAV_TEXT_COLOR": "#1D2025",
+    "NAV_MUTED_TEXT_COLOR": "#66707A",
+    "NAV_BORDER_COLOR": "#E2E8E4",
+    "NAV_HOVER_COLOR": "#EAF0EF",
+    "NAV_HOVER_TEXT_COLOR": "#1D2025",
+    "NAV_HOVER_BORDER": "#D5DEDA",
+    "NAV_HOVER_SHADOW": "rgba(0, 0, 0, 0.08)",
+    "NAV_ACTIVE_COLOR": "#E1EAE8",
+    "NAV_ACTIVE_TEXT_COLOR": "#1D2025",
+    "NAV_ACTIVE_ACCENT": "#2AB3A6",
 }
 
 DARK_COLORS = {
@@ -23,7 +35,19 @@ DARK_COLORS = {
     "ACCENT_ORANGE": "#F0B563",
     "ACCENT_RED": "#F2786A",
     "SHADOW_COLOR": "rgba(0, 0, 0, 0.4)",
-    "NAV_HOVER_COLOR": "#22262E",
+
+    # --- Nav ---
+    "NAV_BG_COLOR": "#171B21",           # slightly darker than panel for depth
+    "NAV_TEXT_COLOR": "#E8EAED",
+    "NAV_MUTED_TEXT_COLOR": "#9AA3AF",
+    "NAV_BORDER_COLOR": "#2A2F38",
+    "NAV_HOVER_COLOR": "#2A3038",        # visible lift from nav bg
+    "NAV_HOVER_TEXT_COLOR": "#FFFFFF",   # brighten text on hover
+    "NAV_HOVER_BORDER": "#3A424D",
+    "NAV_HOVER_SHADOW": "rgba(0, 0, 0, 0.5)",
+    "NAV_ACTIVE_COLOR": "#323A44",
+    "NAV_ACTIVE_TEXT_COLOR": "#FFFFFF",
+    "NAV_ACTIVE_ACCENT": "#33C9BB",      # teal underline/bar
 }
 
 THEMES = {"light": LIGHT_COLORS, "dark": DARK_COLORS}
